@@ -1,5 +1,6 @@
 package com.kodewala.sms.service.impl;
 
+import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -13,7 +14,9 @@ import com.kodewala.sms.dto.CourseResponse;
 import com.kodewala.sms.entity.Course;
 import com.kodewala.sms.exception.CourseNotFoundException;
 import com.kodewala.sms.exception.DuplicateCourseCodeException;
+import com.kodewala.sms.exception.ResourceConflictException;
 import com.kodewala.sms.repository.CourseRepository;
+import com.kodewala.sms.repository.EnrollmentRepository;
 import com.kodewala.sms.service.CourseService;
 import com.kodewala.sms.util.PageRequestUtil;
 
@@ -21,16 +24,21 @@ import com.kodewala.sms.util.PageRequestUtil;
 public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
-    public CourseServiceImpl(CourseRepository courseRepository) {
+    public CourseServiceImpl(CourseRepository courseRepository, EnrollmentRepository enrollmentRepository) {
         this.courseRepository = courseRepository;
+		this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
     public CourseResponse createCourse(CourseRequest request) {
+    	String courseCode = request.getCourseCode()
+    	        .trim()
+    	        .toUpperCase(Locale.ROOT);
 
         if (courseRepository.existsByCourseCode(
-                request.getCourseCode())) {
+        		courseCode)) {
 
             throw new DuplicateCourseCodeException(
                     "Course already exists with code: "
@@ -41,7 +49,7 @@ public class CourseServiceImpl implements CourseService {
         Course course = new Course();
 
         course.setCourseName(request.getCourseName());
-        course.setCourseCode(request.getCourseCode());
+        course.setCourseCode(courseCode);
         course.setDuration(request.getDuration());
         course.setFees(request.getFees());
         course.setDescription(request.getDescription());
@@ -153,6 +161,12 @@ public class CourseServiceImpl implements CourseService {
                                 "Course not found with id: " + id
                         ));
 
+        if (enrollmentRepository.existsByCourseId(id)) {
+            throw new ResourceConflictException(
+                    "Cannot delete course because enrollments exist"
+            );
+        }
+        
         courseRepository.delete(course);
     }
 

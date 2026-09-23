@@ -1,5 +1,6 @@
 package com.kodewala.sms.service.impl;
 
+import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -12,24 +13,33 @@ import com.kodewala.sms.dto.StudentRequest;
 import com.kodewala.sms.dto.StudentResponse;
 import com.kodewala.sms.entity.Student;
 import com.kodewala.sms.exception.DuplicateEmailException;
+import com.kodewala.sms.exception.ResourceConflictException;
 import com.kodewala.sms.exception.StudentNotFoundException;
+import com.kodewala.sms.repository.EnrollmentRepository;
 import com.kodewala.sms.repository.StudentRepository;
 import com.kodewala.sms.service.StudentService;
 import com.kodewala.sms.util.PageRequestUtil;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class StudentServiceImpl implements StudentService {
 
-    private final StudentRepository studentRepository;
+	private final StudentRepository studentRepository;
+	private final EnrollmentRepository enrollmentRepository;
 
-    public StudentServiceImpl(StudentRepository studentRepository) {
-        this.studentRepository = studentRepository;
+    public StudentServiceImpl(StudentRepository studentRepository, EnrollmentRepository enrollmentRepository) {
+        this.enrollmentRepository = enrollmentRepository;
+		this.studentRepository = studentRepository;
     }
 
     @Override
     public StudentResponse createStudent(StudentRequest request) {
+    	String email = request.getEmail()
+    	        .trim()
+    	        .toLowerCase(Locale.ROOT);
 
-        if (studentRepository.existsByEmail(request.getEmail())) {
+        if (studentRepository.existsByEmail(email)) {
             throw new DuplicateEmailException(
                     "Student already exists with email: "
                             + request.getEmail()
@@ -40,7 +50,7 @@ public class StudentServiceImpl implements StudentService {
 
         student.setFirstName(request.getFirstName());
         student.setLastName(request.getLastName());
-        student.setEmail(request.getEmail());
+        student.setEmail(email);
         student.setPhone(request.getPhone());
         student.setDateOfBirth(request.getDateOfBirth());
         student.setAddress(request.getAddress());
@@ -124,6 +134,7 @@ public class StudentServiceImpl implements StudentService {
         return mapToResponse(updatedStudent);
     }
 
+    @Transactional
     @Override
     public void deleteStudent(Long id) {
 
@@ -132,6 +143,12 @@ public class StudentServiceImpl implements StudentService {
                         new StudentNotFoundException(
                                 "Student not found with id: " + id
                         ));
+        if (enrollmentRepository.existsByStudentId(id)) {
+            throw new ResourceConflictException(
+                    "Cannot delete student because enrollments exist"
+            );
+        }
+
 
         studentRepository.delete(student);
     }

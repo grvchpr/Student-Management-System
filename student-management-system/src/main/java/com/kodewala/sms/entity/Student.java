@@ -1,13 +1,21 @@
 package com.kodewala.sms.entity;
 
-import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Past;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "students")
@@ -34,6 +42,7 @@ public class Student {
 	private String phone;
 
 	@Column(name = "date_of_birth")
+	@Past(message = "Date of birth must be in the past")
 	private LocalDate dateOfBirth;
 
 	@Column(length = 255)

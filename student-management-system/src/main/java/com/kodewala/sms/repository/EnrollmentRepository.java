@@ -1,9 +1,11 @@
 package com.kodewala.sms.repository;
 
-import com.kodewala.sms.entity.Enrollment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.kodewala.sms.entity.Enrollment;
 
 public interface EnrollmentRepository
         extends JpaRepository<Enrollment, Long> {
@@ -22,4 +24,14 @@ public interface EnrollmentRepository
             Long courseId,
             Pageable pageable
     );
+    
+    @EntityGraph(attributePaths = {
+            "student",
+            "course"
+    })
+    Page<Enrollment> findAll(Pageable pageable);
+    
+    boolean existsByStudentId(Long studentId);
+
+    boolean existsByCourseId(Long courseId);
 }
