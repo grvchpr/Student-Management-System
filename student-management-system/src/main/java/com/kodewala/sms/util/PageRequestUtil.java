@@ -1,16 +1,16 @@
 package com.kodewala.sms.util;
 
+import java.util.Set;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-
-import java.util.Set;
 
 public final class PageRequestUtil {
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
-    private static final int MAX_SIZE = 50;
+    private static final int MAX_SIZE = 100;
 
     private PageRequestUtil() {
     }
@@ -34,14 +34,20 @@ public final class PageRequestUtil {
             size = MAX_SIZE;
         }
 
-        if (!allowedSortFields.contains(sortBy)) {
+        if (sortBy == null ||
+                !allowedSortFields.contains(sortBy)) {
+
             sortBy = "id";
         }
 
-        Sort.Direction sortDirection =
-                "desc".equalsIgnoreCase(direction)
-                        ? Sort.Direction.DESC
-                        : Sort.Direction.ASC;
+        Sort.Direction sortDirection;
+
+        try {
+            sortDirection =
+                    Sort.Direction.fromString(direction);
+        } catch (Exception exception) {
+            sortDirection = Sort.Direction.ASC;
+        }
 
         return PageRequest.of(
                 page,

@@ -1,7 +1,5 @@
 package com.kodewala.sms.service.impl;
 
-import java.time.LocalDate;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -74,23 +72,16 @@ public class EnrollmentServiceImpl
             );
         }
 
-        Enrollment enrollment = Enrollment.builder()
-                .student(student)
-                .course(course)
-                .enrollmentDate(
-                        request.getEnrollmentDate() != null
-                                ? request.getEnrollmentDate()
-                                : LocalDate.now()
-                )
-                .status(
-                        request.getStatus() != null
-                                ? request.getStatus()
-                                : EnrollmentStatus.ACTIVE
-                )
-                .build();
+        Enrollment enrollment = new Enrollment();
+
+        enrollment.setStudent(student);
+        enrollment.setCourse(course);
+        enrollment.setEnrollmentDate(
+                request.getEnrollmentDate()
+        );
 
         Enrollment savedEnrollment =
-                enrollmentRepository.save(enrollment);
+                enrollmentRepository.saveAndFlush(enrollment);
 
         return mapToResponse(savedEnrollment);
     }

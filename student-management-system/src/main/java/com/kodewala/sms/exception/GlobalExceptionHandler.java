@@ -1,7 +1,9 @@
 package com.kodewala.sms.exception;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,38 +16,105 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	@ExceptionHandler(StudentNotFoundException.class)
-	public ResponseEntity<ErrorResponse> handleStudentNotFound(
-	        StudentNotFoundException exception,
-	        HttpServletRequest request) {
+    // =========================
+    // 404 - Student Not Found
+    // =========================
 
-	    ErrorResponse response = ErrorResponse.builder()
-	            .status(HttpStatus.NOT_FOUND.value())
-	            .error(HttpStatus.NOT_FOUND.getReasonPhrase())
-	            .message(exception.getMessage())
-	            .path(request.getRequestURI())
-	            .timestamp(LocalDateTime.now())
-	            .build();
+    @ExceptionHandler(StudentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleStudentNotFound(
+            StudentNotFoundException exception,
+            HttpServletRequest request) {
 
-	    return ResponseEntity
-	            .status(HttpStatus.NOT_FOUND)
-	            .body(response);
-	}
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    // =========================
+    // 404 - Course Not Found
+    // =========================
+
+    @ExceptionHandler(CourseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCourseNotFound(
+            CourseNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    // =========================
+    // 404 - Enrollment Not Found
+    // =========================
+
+    @ExceptionHandler(EnrollmentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEnrollmentNotFound(
+            EnrollmentNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    // =========================
+    // 409 - Duplicate Email
+    // =========================
 
     @ExceptionHandler(DuplicateEmailException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateEmail(
-            DuplicateEmailException exception) {
+            DuplicateEmailException exception,
+            HttpServletRequest request) {
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.CONFLICT.value())
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(errorResponse);
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request
+        );
     }
+
+    // =========================
+    // 409 - Duplicate Course Code
+    // =========================
+
+    @ExceptionHandler(DuplicateCourseCodeException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateCourseCode(
+            DuplicateCourseCodeException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    // =========================
+    // 409 - Duplicate Enrollment
+    // =========================
+
+    @ExceptionHandler(DuplicateEnrollmentException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEnrollment(
+            DuplicateEnrollmentException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request
+        );
+    }
+
+    // =========================
+    // 400 - Validation Error
+    // =========================
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(
@@ -60,112 +129,129 @@ public class GlobalExceptionHandler {
                                 + ": "
                                 + error.getDefaultMessage()
                 )
-                .findFirst()
-                .orElse("Validation failed");
+                .collect(Collectors.joining(", "));
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message,
+                request
+        );
+    }
+
+    // =========================
+    // 400 - Invalid Parameter
+    // =========================
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request) {
+
+        String message =
+                "Invalid value for parameter: "
+                        + exception.getName();
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message,
+                request
+        );
+    }
+
+    // =========================
+    // 409 - Database Constraint
+    // =========================
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException exception,
+            HttpServletRequest request) {
+
+        String message = getConstraintMessage(exception);
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                message,
+                request
+        );
+    }
+
+ // =========================
+    // Private method
+    // =========================
+    
+    private String getConstraintMessage(
+            DataIntegrityViolationException exception) {
+
+        String message = exception.getMostSpecificCause()
+                .getMessage();
+
+        if (message != null) {
+
+            if (message.contains("uk_student_course")) {
+                return "Student is already enrolled in this course";
+            }
+
+            if (message.contains("email")) {
+                return "Student email already exists";
+            }
+
+            if (message.contains("course_code")) {
+                return "Course code already exists";
+            }
+        }
+
+        return "Database constraint violation";
+    }
+
+	// =========================
+    // 500 - Unexpected Error
+    // =========================
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneralException(
+            Exception exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred",
+                request
+        );
+    }
+
+    // =========================
+    // Common Response Builder
+    // =========================
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            HttpServletRequest request) {
 
         ErrorResponse response = ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .status(status.value())
+                .error(status.getReasonPhrase())
                 .message(message)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build();
 
         return ResponseEntity
-                .badRequest()
+                .status(status)
                 .body(response);
     }
+    
+    @ExceptionHandler(ResourceConflictException.class)
+    public ResponseEntity<ErrorResponse> handleResourceConflict(
+            ResourceConflictException exception,
+            HttpServletRequest request) {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneralException(
-            Exception exception) {
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("An unexpected error occurred")
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(errorResponse);
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request
+        );
     }
     
-    @ExceptionHandler(CourseNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCourseNotFound(
-            CourseNotFoundException exception) {
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.NOT_FOUND.value())
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(errorResponse);
-    }
-    
-    @ExceptionHandler(DuplicateCourseCodeException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateCourseCode(
-            DuplicateCourseCodeException exception) {
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.CONFLICT.value())
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(errorResponse);
-    }
-    
-    @ExceptionHandler(EnrollmentNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleEnrollmentNotFound(
-            EnrollmentNotFoundException exception) {
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.NOT_FOUND.value())
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(errorResponse);
-    }
-    
-    @ExceptionHandler(DuplicateEnrollmentException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateEnrollment(
-            DuplicateEnrollmentException exception) {
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.CONFLICT.value())
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(errorResponse);
-    }
-    
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException exception) {
-
-        ErrorResponse response = ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .message(
-                        "Invalid value for parameter: "
-                                + exception.getName()
-                )
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity
-                .badRequest()
-                .body(response);
-    }
 }
