@@ -15,7 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.kodewala.sms.security.CustomUserDetailsService;
 import com.kodewala.sms.security.JwtAccessDeniedHandler;
 import com.kodewala.sms.security.JwtAuthenticationEntryPoint;
 import com.kodewala.sms.security.JwtAuthenticationFilter;
@@ -39,18 +38,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider(
-            CustomUserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-
-        provider.setPasswordEncoder(passwordEncoder);
-
-        return provider;
-    }
+	/*
+	 * @Bean public AuthenticationProvider authenticationProvider(
+	 * org.springframework.security.core.userdetails.UserDetailsService
+	 * userDetailsService, PasswordEncoder passwordEncoder) {
+	 * 
+	 * DaoAuthenticationProvider provider = new
+	 * DaoAuthenticationProvider(userDetailsService);
+	 * 
+	 * provider.setPasswordEncoder(passwordEncoder);
+	 * 
+	 * return provider; }
+	 */
 
     @Bean
     public AuthenticationManager authenticationManager(
