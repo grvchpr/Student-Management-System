@@ -3,6 +3,7 @@ package com.kodewala.sms.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,20 +16,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kodewala.sms.dto.StudentRequest;
 import com.kodewala.sms.dto.StudentResponse;
+import com.kodewala.sms.dto.StudentResponsePage;
 import com.kodewala.sms.service.StudentService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/students")
 @Tag(
-        name = "Student Management",
-        description = "APIs for managing students"
-)
+	    name = "Student Management",
+	    description = "APIs for creating, retrieving, updating and deleting students"
+	)
 public class StudentController {
 
     private final StudentService studentService;
@@ -40,24 +43,19 @@ public class StudentController {
     
 
     @Operation(
-            summary = "Create a new student",
-            description = "Creates a new student"
-    )
-    @ApiResponses({
-        @ApiResponse(
-                responseCode = "201",
-                description = "Student created successfully"
-        ),
-        @ApiResponse(
-                responseCode = "400",
-                description = "Invalid student data"
-        ),
-        @ApiResponse(
-                responseCode = "409",
-                description = "Email already exists"
-        )
-})
-    @PostMapping
+    	    summary = "Create a new student",
+    	    description = "Creates a new student after validating the request and checking email uniqueness"
+    	)
+    @ApiResponse(
+    	    responseCode = "201",
+    	    description = "Student created successfully",
+    	    content = @Content(
+    	        mediaType = "application/json",
+    	        schema = @Schema(implementation = StudentResponse.class)
+    	    )
+    	)
+    	@PostMapping
+    	@PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StudentResponse> createStudent(
             @Valid @RequestBody StudentRequest request) {
 
@@ -71,10 +69,21 @@ public class StudentController {
     }
     
     @Operation(
-            summary = "Search students by first name",
-            description = "Searches students using partial first-name matching"
-    )
-    @GetMapping("/search")
+    	    summary = "Search students by first name",
+    	    description = "Retrieves students whose first name matches the supplied search criteria"
+    	)
+    @ApiResponse(
+    	    responseCode = "200",
+    	    description = "Students retrieved successfully",
+    	    content = @Content(
+    	        mediaType = "application/json",
+    	        schema = @Schema(
+    	            implementation = StudentResponsePage.class
+    	        )
+    	    )
+    	)
+    	@GetMapping("/search")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Page<StudentResponse>> searchByName(
 
             @RequestParam String name,
@@ -95,10 +104,19 @@ public class StudentController {
     }
 
     @Operation(
-            summary = "Get student by ID",
-            description = "Fetches a student using student ID"
-    )
-    @GetMapping("/{id}")
+    	    summary = "Get student by ID",
+    	    description = "Retrieves a student using the student's unique ID"
+    	)
+    @ApiResponse(
+    	    responseCode = "200",
+    	    description = "Student found successfully",
+    	    content = @Content(
+    	        mediaType = "application/json",
+    	        schema = @Schema(implementation = StudentResponse.class)
+    	    )
+    	)
+    	@GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<StudentResponse> getStudentById(
             @PathVariable Long id) {
 
@@ -108,10 +126,21 @@ public class StudentController {
     }
 
     @Operation(
-            summary = "Get all students",
-            description = "Fetch students with pagination and sorting"
-    )
-    @GetMapping
+    	    summary = "Get all students",
+    	    description = "Retrieves a paginated and sorted list of students"
+    	)
+    @ApiResponse(
+    	    responseCode = "200",
+    	    description = "Students retrieved successfully",
+    	    content = @Content(
+    	        mediaType = "application/json",
+    	        schema = @Schema(
+    	            implementation = StudentResponsePage.class
+    	        )
+    	    )
+    	)
+    	@GetMapping
+    	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Page<StudentResponse>> getAllStudents(
 
             @RequestParam(defaultValue = "0")
@@ -137,10 +166,19 @@ public class StudentController {
     }
 
     @Operation(
-            summary = "Update student",
-            description = "Updates an existing student"
-    )
-    @PutMapping("/{id}")
+    	    summary = "Update student",
+    	    description = "Updates an existing student's information using the student's unique ID"
+    	)
+    @ApiResponse(
+    	    responseCode = "200",
+    	    description = "Student updated successfully",
+    	    content = @Content(
+    	        mediaType = "application/json",
+    	        schema = @Schema(implementation = StudentResponse.class)
+    	    )
+    	)
+    	@PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StudentResponse> updateStudent(
             @PathVariable Long id,
             @Valid @RequestBody StudentRequest request) {
@@ -151,10 +189,15 @@ public class StudentController {
     }
 
     @Operation(
-            summary = "Delete student",
-            description = "Deletes a student"
-    )
-    @DeleteMapping("/{id}")
+    	    summary = "Delete student",
+    	    description = "Deletes a student using the student's unique ID"
+    	)
+    @ApiResponse(
+    	    responseCode = "204",
+    	    description = "Student deleted successfully"
+    	)
+    	@DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteStudent(
             @PathVariable Long id) {
 

@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Request for enrolling a student into a course")
+@Schema(description = "Request payload for creating a student course enrollment")
 public class EnrollmentRequest {
 
     @NotNull(message = "Student ID is required")
