@@ -16,7 +16,10 @@ import java.time.LocalDateTime;
 @Schema(description = "Course response object")
 public class CourseResponse {
 
-    @Schema(example = "1")
+	@Schema(
+	        description = "Unique enrollment ID",
+	        example = "1"
+	)
     private Long id;
 
     @Schema(example = "Java Full Stack Development")
@@ -34,7 +37,15 @@ public class CourseResponse {
     @Schema(example = "Java, Spring Boot, Microservices and SQL")
     private String description;
 
+    @Schema(
+            description = "Course creation timestamp",
+            example = "2026-09-23T12:30:00"
+    )
     private LocalDateTime createdAt;
 
+    @Schema(
+            description = "Course last update timestamp",
+            example = "2026-09-23T12:30:00"
+    )
     private LocalDateTime updatedAt;
 }

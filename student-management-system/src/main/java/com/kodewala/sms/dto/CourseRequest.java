@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Request object for creating or updating a course")
+@Schema(description = "Request payload for creating or updating a course")
 public class CourseRequest {
 
     @NotBlank(message = "Course name is required")

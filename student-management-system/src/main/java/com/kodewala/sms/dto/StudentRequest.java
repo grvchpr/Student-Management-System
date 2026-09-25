@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Request object used to create or update a student")
+@Schema(description = "Request payload for creating or updating a student")
 public class StudentRequest {
 
     @NotBlank(message = "First name is required")
