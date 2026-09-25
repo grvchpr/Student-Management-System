@@ -1,14 +1,21 @@
 package com.kodewala.sms.controller;
 
+import java.security.Principal;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kodewala.sms.dto.ChangePasswordRequest;
 import com.kodewala.sms.dto.LoginRequest;
 import com.kodewala.sms.dto.LoginResponse;
+import com.kodewala.sms.dto.RegisterRequest;
+import com.kodewala.sms.dto.UserResponse;
 import com.kodewala.sms.service.AuthService;
+import com.kodewala.sms.service.UserRegistrationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,17 +30,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(
     name = "Authentication",
-    description = "Authentication and JWT token management APIs"
+    description = "Authentication and registration APIs"
 )
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRegistrationService userRegistrationService;
 
     @PostMapping("/login")
-    @Operation(
-        summary = "Login",
-        description = "Authenticate a user and generate a JWT token"
-    )
+    @SecurityRequirements
+    @Operation(summary = "Login")
     @ApiResponses({
         @ApiResponse(
             responseCode = "200",
@@ -44,11 +50,10 @@ public class AuthController {
             description = "Invalid username or password"
         ),
         @ApiResponse(
-            responseCode = "400",
-            description = "Invalid request"
+            responseCode = "403",
+            description = "Account is pending or rejected"
         )
     })
-    @SecurityRequirements
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request) {
 
@@ -60,5 +65,52 @@ public class AuthController {
         return ResponseEntity.ok(
                 new LoginResponse(token, "Bearer")
         );
+    }
+
+    @PostMapping("/register")
+    @SecurityRequirements
+    @Operation(
+        summary = "Register user",
+        description =
+            "Create a pending USER account for administrator approval"
+    )
+    public ResponseEntity<UserResponse> register(
+            @Valid @RequestBody RegisterRequest request) {
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(userRegistrationService.register(request));
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+        summary = "Change password",
+        description =
+            "Change the password of the currently authenticated user"
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Password changed successfully"
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid password request"
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication required"
+        )
+    })
+    public ResponseEntity<Void> changePassword(
+            Principal principal,
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        authService.changePassword(
+                principal.getName(),
+                request
+        );
+
+        return ResponseEntity.ok().build();
     }
 }

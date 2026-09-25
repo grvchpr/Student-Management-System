@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
@@ -16,20 +17,67 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    try {
-      await login(username, password);
+    const trimmedUsername = username.trim();
 
-      window.location.href = "/dashboard";
+    if (!trimmedUsername) {
+      setError("Username is required.");
+      setLoading(false);
+      return;
+    }
+
+    if (!password) {
+      setError("Password is required.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await login(
+        trimmedUsername,
+        password
+      );
+
+      window.location.href =
+        "/dashboard";
+
     } catch (err) {
-      if (err.response?.status === 401) {
+      console.error(
+        "Login error:",
+        err
+      );
+
+      const status =
+        err.response?.status;
+
+      const serverMessage =
+        err.response?.data?.message;
+
+      if (status === 401) {
         setError(
-          "Invalid username or password"
+          serverMessage ||
+          "Invalid username or password."
+        );
+      } else if (status === 403) {
+        setError(
+          serverMessage ||
+          "Your account does not have permission to login."
+        );
+      } else if (status === 400) {
+        setError(
+          serverMessage ||
+          "Please check your login details."
+        );
+      } else if (!err.response) {
+        setError(
+          "Unable to connect to the server. Please try again."
         );
       } else {
         setError(
-          "Unable to connect to server"
+          serverMessage ||
+          "Unable to sign in. Please try again."
         );
       }
+
     } finally {
       setLoading(false);
     }
@@ -42,6 +90,7 @@ const Login = () => {
 
         {/* Brand */}
         <div className="login-brand">
+
           <div className="login-logo">
             SMS
           </div>
@@ -54,18 +103,23 @@ const Login = () => {
             Manage students, courses and
             enrollments in one place.
           </p>
+
         </div>
 
         {/* Login Card */}
         <div className="login-card">
 
           <div className="login-card-header">
-            <h2>Welcome Back</h2>
+
+            <h2>
+              Welcome Back
+            </h2>
 
             <p>
               Sign in to continue to your
               dashboard.
             </p>
+
           </div>
 
           {error && (
@@ -78,6 +132,7 @@ const Login = () => {
 
             {/* Username */}
             <div className="form-group">
+
               <label htmlFor="username">
                 Username
               </label>
@@ -96,12 +151,14 @@ const Login = () => {
                 required
                 disabled={loading}
               />
+
             </div>
 
             <br />
 
             {/* Password */}
             <div className="form-group">
+
               <label htmlFor="password">
                 Password
               </label>
@@ -120,6 +177,7 @@ const Login = () => {
                 required
                 disabled={loading}
               />
+
             </div>
 
             <div className="login-actions">
@@ -133,6 +191,18 @@ const Login = () => {
                   ? "Signing in..."
                   : "Sign In"}
               </button>
+
+            </div>
+
+            <div className="login-signup">
+
+              <span>
+                Don't have an account?
+              </span>{" "}
+
+              <Link to="/register">
+                Sign Up
+              </Link>
 
             </div>
 
