@@ -15,7 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.kodewala.sms.security.CustomUserDetailsService;
 import com.kodewala.sms.security.JwtAccessDeniedHandler;
 import com.kodewala.sms.security.JwtAuthenticationEntryPoint;
 import com.kodewala.sms.security.JwtAuthenticationFilter;
@@ -29,7 +28,9 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
@@ -37,18 +38,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider(
-            CustomUserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-
-        provider.setPasswordEncoder(passwordEncoder);
-
-        return provider;
-    }
+	/*
+	 * @Bean public AuthenticationProvider authenticationProvider(
+	 * org.springframework.security.core.userdetails.UserDetailsService
+	 * userDetailsService, PasswordEncoder passwordEncoder) {
+	 * 
+	 * DaoAuthenticationProvider provider = new
+	 * DaoAuthenticationProvider(userDetailsService);
+	 * 
+	 * provider.setPasswordEncoder(passwordEncoder);
+	 * 
+	 * return provider; }
+	 */
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -64,21 +65,66 @@ public class SecurityConfig {
             throws Exception {
 
         http
+
+            // JWT-based API -> CSRF disabled
             .csrf(csrf -> csrf.disable())
 
-            /*
-             * Spring Security automatically discovers the
-             * CorsConfigurationSource bean from CorsConfig.
-             */
+            // Use the CorsConfigurationSource from CorsConfig
             .cors(cors -> {})
 
+            // Stateless JWT authentication
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
                     SessionCreationPolicy.STATELESS
                 )
             )
 
+            // Security headers
+            .headers(headers -> headers
+
+                // Prevent MIME-type sniffing
+                .contentTypeOptions(
+                    contentTypeOptions -> {}
+                )
+
+                // Prevent clickjacking
+                .frameOptions(
+                    frameOptions ->
+                        frameOptions.deny()
+                )
+
+                // Control Referer information
+                .referrerPolicy(
+                    referrerPolicy ->
+                        referrerPolicy
+                            .policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy
+                                    .STRICT_ORIGIN_WHEN_CROSS_ORIGIN
+                            )
+                )
+
+                // Restrict browser features
+                .permissionsPolicyHeader(
+                	    permissionsPolicy ->
+                	        permissionsPolicy.policy(
+                	            "camera=(), " +
+                	            "microphone=(), " +
+                	            "geolocation=(), " +
+                	            "payment=()"
+                	        )
+                	)
+
+                // HSTS for HTTPS deployments
+                .httpStrictTransportSecurity(
+                    hsts -> hsts
+                        .includeSubDomains(true)
+                        .preload(false)
+                        .maxAgeInSeconds(31536000)
+                )
+            )
+
             .authorizeHttpRequests(auth -> auth
+
                 .requestMatchers(
                     "/swagger-ui/**",
                     "/swagger-ui.html",
@@ -92,9 +138,11 @@ public class SecurityConfig {
             )
 
             .exceptionHandling(exception -> exception
+
                 .authenticationEntryPoint(
                     jwtAuthenticationEntryPoint
                 )
+
                 .accessDeniedHandler(
                     jwtAccessDeniedHandler
                 )
