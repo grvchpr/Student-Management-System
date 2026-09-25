@@ -1,50 +1,39 @@
 import { useEffect, useState } from "react";
-import { getStudents } from "../api/studentApi";
-import { getCourses } from "../api/courseApi";
-import { getEnrollments } from "../api/enrollmentApi";
+import { useAuth } from "../context/AuthContext";
+import { getDashboardStats } from "../api/dashboardApi";
 
 const Dashboard = () => {
-  const [studentsCount, setStudentsCount] = useState(0);
-  const [coursesCount, setCoursesCount] = useState(0);
-  const [enrollments, setEnrollments] = useState([]);
+  const { user } = useAuth();
+
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalCourses: 0,
+    totalEnrollments: 0,
+    pendingRegistrations: 0,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadDashboardData = async () => {
+  const isAdmin = user?.role === "ADMIN";
+
+  const loadDashboardStats = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [
-        studentsData,
-        coursesData,
-        enrollmentData,
-      ] = await Promise.all([
-        getStudents(0, 1),
-        getCourses(0, 1),
-        getEnrollments(0, 100),
-      ]);
+      const data = await getDashboardStats();
 
-      setStudentsCount(
-        studentsData.totalElements ??
-          studentsData.content?.length ??
-          0
-      );
-
-      setCoursesCount(
-        coursesData.totalElements ??
-          coursesData.content?.length ??
-          0
-      );
-
-      setEnrollments(
-        enrollmentData.content ??
-          enrollmentData
-      );
+      setStats({
+        totalStudents: data.totalStudents ?? 0,
+        totalCourses: data.totalCourses ?? 0,
+        totalEnrollments: data.totalEnrollments ?? 0,
+        pendingRegistrations:
+          data.pendingRegistrations ?? 0,
+      });
     } catch (err) {
       console.error(
-        "Dashboard loading error:",
+        "Load dashboard stats error:",
         err
       );
 
@@ -54,11 +43,12 @@ const Dashboard = () => {
         );
       } else if (err.response?.status === 403) {
         setError(
-          "You do not have permission to view dashboard data."
+          "You do not have permission to view dashboard statistics."
         );
       } else {
         setError(
-          "Unable to load dashboard data."
+          err.response?.data?.message ||
+            "Unable to load dashboard statistics."
         );
       }
     } finally {
@@ -67,23 +57,12 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const activeCount = enrollments.filter(
-    (enrollment) =>
-      enrollment.status === "ACTIVE"
-  ).length;
-
-  const completedCount = enrollments.filter(
-    (enrollment) =>
-      enrollment.status === "COMPLETED"
-  ).length;
-
-  const cancelledCount = enrollments.filter(
-    (enrollment) =>
-      enrollment.status === "CANCELLED"
-  ).length;
+    if (isAdmin) {
+      loadDashboardStats();
+    } else {
+      setLoading(false);
+    }
+  }, [isAdmin]);
 
   if (loading) {
     return (
@@ -97,10 +76,13 @@ const Dashboard = () => {
 
   return (
     <div className="page-container">
+
       <div className="page-header">
         <h1>Dashboard</h1>
+
         <p>
-          Welcome to the Student Management System.
+          Welcome back,{" "}
+          <strong>{user?.username || "User"}</strong>.
         </p>
       </div>
 
@@ -110,153 +92,118 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="dashboard-grid">
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">
-              Total Students
-            </span>
+      {isAdmin ? (
+        <>
+          <div className="dashboard-stats-grid">
 
-            <span className="stat-card-icon">
-              S
-            </span>
-          </div>
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-icon">
+                👨‍🎓
+              </div>
 
-          <div className="stat-card-value">
-            {studentsCount}
-          </div>
-        </div>
+              <div className="dashboard-stat-content">
+                <span className="dashboard-stat-label">
+                  Total Students
+                </span>
 
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">
-              Total Courses
-            </span>
-
-            <span className="stat-card-icon">
-              C
-            </span>
-          </div>
-
-          <div className="stat-card-value">
-            {coursesCount}
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">
-              Total Enrollments
-            </span>
-
-            <span className="stat-card-icon">
-              E
-            </span>
-          </div>
-
-          <div className="stat-card-value">
-            {enrollments.length}
-          </div>
-        </div>
-      </div>
-
-      <div className="content-card">
-        <div className="content-card-header">
-          <h2>Enrollment Status</h2>
-        </div>
-
-        <div className="status-grid">
-          <div className="status-card status-active">
-            <div className="status-card-title">
-              Active
+                <strong className="dashboard-stat-value">
+                  {stats.totalStudents}
+                </strong>
+              </div>
             </div>
 
-            <div className="status-card-value">
-              {activeCount}
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-icon">
+                📚
+              </div>
+
+              <div className="dashboard-stat-content">
+                <span className="dashboard-stat-label">
+                  Total Courses
+                </span>
+
+                <strong className="dashboard-stat-value">
+                  {stats.totalCourses}
+                </strong>
+              </div>
             </div>
+
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-icon">
+                📝
+              </div>
+
+              <div className="dashboard-stat-content">
+                <span className="dashboard-stat-label">
+                  Total Enrollments
+                </span>
+
+                <strong className="dashboard-stat-value">
+                  {stats.totalEnrollments}
+                </strong>
+              </div>
+            </div>
+
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-icon">
+                ⏳
+              </div>
+
+              <div className="dashboard-stat-content">
+                <span className="dashboard-stat-label">
+                  Pending Registrations
+                </span>
+
+                <strong className="dashboard-stat-value">
+                  {stats.pendingRegistrations}
+                </strong>
+              </div>
+            </div>
+
           </div>
 
-          <div className="status-card status-completed">
-            <div className="status-card-title">
-              Completed
-            </div>
+          <div className="content-card">
+            <div className="content-card-header">
+              <div>
+                <h2>Administration Overview</h2>
 
-            <div className="status-card-value">
-              {completedCount}
+                <p
+                  style={{
+                    marginTop: "5px",
+                    color: "#64748b",
+                    fontSize: "14px",
+                  }}
+                >
+                  Monitor students, courses,
+                  enrollments and user registrations.
+                </p>
+              </div>
             </div>
           </div>
+        </>
+      ) : (
+        <div className="content-card">
+          <div className="content-card-header">
+            <div>
+              <h2>
+                Welcome to Student Management System
+              </h2>
 
-          <div className="status-card status-cancelled">
-            <div className="status-card-title">
-              Cancelled
-            </div>
-
-            <div className="status-card-value">
-              {cancelledCount}
+              <p
+                style={{
+                  marginTop: "8px",
+                  color: "#64748b",
+                  fontSize: "14px",
+                }}
+              >
+                You can browse available courses
+                from the Courses section.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <br />
-
-      <div className="content-card">
-        <div className="content-card-header">
-          <h2>Recent Enrollments</h2>
-        </div>
-
-        {enrollments.length === 0 ? (
-          <div className="empty-state">
-            No enrollments found.
-          </div>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Student</th>
-                  <th>Course</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {enrollments
-                  .slice(0, 5)
-                  .map((enrollment) => (
-                    <tr key={enrollment.id}>
-                      <td>
-                        {enrollment.id}
-                      </td>
-
-                      <td>
-                        {enrollment.studentName}
-                      </td>
-
-                      <td>
-                        {enrollment.courseName}
-                      </td>
-
-                      <td>
-                        {enrollment.enrollmentDate}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`status-badge ${enrollment.status.toLowerCase()}`}
-                        >
-                          {enrollment.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
