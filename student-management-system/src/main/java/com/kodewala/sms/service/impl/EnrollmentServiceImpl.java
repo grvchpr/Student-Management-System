@@ -21,8 +21,6 @@ import com.kodewala.sms.repository.EnrollmentRepository;
 import com.kodewala.sms.repository.StudentRepository;
 import com.kodewala.sms.service.EnrollmentService;
 
-
-
 @Service
 public class EnrollmentServiceImpl
         implements EnrollmentService {
@@ -76,8 +74,18 @@ public class EnrollmentServiceImpl
 
         enrollment.setStudent(student);
         enrollment.setCourse(course);
+
         enrollment.setEnrollmentDate(
                 request.getEnrollmentDate()
+        );
+
+        /*
+         * New enrollments always start as ACTIVE.
+         * Status changes are handled separately through
+         * updateEnrollmentStatus().
+         */
+        enrollment.setStatus(
+                EnrollmentStatus.ACTIVE
         );
 
         Enrollment savedEnrollment =

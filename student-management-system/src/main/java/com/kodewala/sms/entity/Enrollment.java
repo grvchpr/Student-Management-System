@@ -18,7 +18,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -71,7 +70,8 @@ public class Enrollment {
             name = "enrollment_date",
             nullable = false
     )
-    @PastOrPresent(message = "Enrollment date cannot be in the future")
+  
+    
     private LocalDate enrollmentDate;
 
     @Enumerated(EnumType.STRING)

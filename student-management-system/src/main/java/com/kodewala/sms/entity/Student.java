@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Past;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,7 +41,6 @@ public class Student {
 	private String phone;
 
 	@Column(name = "date_of_birth")
-	@Past(message = "Date of birth must be in the past")
 	private LocalDate dateOfBirth;
 
 	@Column(length = 255)

@@ -1,6 +1,5 @@
 package com.kodewala.sms.service.impl;
 
-import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -20,29 +19,39 @@ import com.kodewala.sms.repository.StudentRepository;
 import com.kodewala.sms.service.StudentService;
 import com.kodewala.sms.util.PageRequestUtil;
 
-import jakarta.transaction.Transactional;
-
 @Service
 public class StudentServiceImpl implements StudentService {
 
-	private final StudentRepository studentRepository;
-	private final EnrollmentRepository enrollmentRepository;
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of(
+                    "id",
+                    "firstName",
+                    "lastName",
+                    "email",
+                    "dateOfBirth",
+                    "createdAt"
+            );
 
-    public StudentServiceImpl(StudentRepository studentRepository, EnrollmentRepository enrollmentRepository) {
+    private final StudentRepository studentRepository;
+    private final EnrollmentRepository enrollmentRepository;
+
+    public StudentServiceImpl(
+            StudentRepository studentRepository,
+            EnrollmentRepository enrollmentRepository) {
+
+        this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
-		this.studentRepository = studentRepository;
     }
 
     @Override
     public StudentResponse createStudent(StudentRequest request) {
-    	String email = request.getEmail()
-    	        .trim()
-    	        .toLowerCase(Locale.ROOT);
+
+        String email = normalizeEmail(request.getEmail());
 
         if (studentRepository.existsByEmail(email)) {
             throw new DuplicateEmailException(
                     "Student already exists with email: "
-                            + request.getEmail()
+                            + email
             );
         }
 
@@ -79,21 +88,12 @@ public class StudentServiceImpl implements StudentService {
             String sortBy,
             String direction) {
 
-        Set<String> allowedSortFields = Set.of(
-                "id",
-                "firstName",
-                "lastName",
-                "email",
-                "dateOfBirth",
-                "createdAt"
-        );
-
         Pageable pageable = PageRequestUtil.create(
                 page,
                 size,
                 sortBy,
                 direction,
-                allowedSortFields
+                ALLOWED_SORT_FIELDS
         );
 
         return studentRepository.findAll(pageable)
@@ -111,19 +111,21 @@ public class StudentServiceImpl implements StudentService {
                                 "Student not found with id: " + id
                         ));
 
+        String email = normalizeEmail(request.getEmail());
+
         if (studentRepository.existsByEmailAndIdNot(
-                request.getEmail(),
+                email,
                 id)) {
 
             throw new DuplicateEmailException(
                     "Another student already exists with email: "
-                            + request.getEmail()
+                            + email
             );
         }
 
         student.setFirstName(request.getFirstName());
         student.setLastName(request.getLastName());
-        student.setEmail(request.getEmail());
+        student.setEmail(email);
         student.setPhone(request.getPhone());
         student.setDateOfBirth(request.getDateOfBirth());
         student.setAddress(request.getAddress());
@@ -134,7 +136,6 @@ public class StudentServiceImpl implements StudentService {
         return mapToResponse(updatedStudent);
     }
 
-    @Transactional
     @Override
     public void deleteStudent(Long id) {
 
@@ -143,12 +144,12 @@ public class StudentServiceImpl implements StudentService {
                         new StudentNotFoundException(
                                 "Student not found with id: " + id
                         ));
+
         if (enrollmentRepository.existsByStudentId(id)) {
             throw new ResourceConflictException(
-                    "Cannot delete student because enrollments exist"
+                    "Student cannot be deleted because enrollments exist"
             );
         }
-
 
         studentRepository.delete(student);
     }
@@ -187,14 +188,11 @@ public class StudentServiceImpl implements StudentService {
                 )
                 .map(this::mapToResponse);
     }
-    
-    private static final Set<String> ALLOWED_SORT_FIELDS =
-            Set.of(
-                    "id",
-                    "firstName",
-                    "lastName",
-                    "email",
-                    "dateOfBirth",
-                    "createdAt"
-            );
+
+    private String normalizeEmail(String email) {
+
+        return email
+                .trim()
+                .toLowerCase();
+    }
 }

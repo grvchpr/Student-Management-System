@@ -1,5 +1,24 @@
 package com.kodewala.sms.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDate;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.kodewala.sms.dto.EnrollmentRequest;
 import com.kodewala.sms.dto.EnrollmentResponse;
 import com.kodewala.sms.entity.Course;
@@ -14,21 +33,6 @@ import com.kodewala.sms.repository.CourseRepository;
 import com.kodewala.sms.repository.EnrollmentRepository;
 import com.kodewala.sms.repository.StudentRepository;
 import com.kodewala.sms.service.impl.EnrollmentServiceImpl;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentServiceImplTest {
@@ -79,7 +83,6 @@ class EnrollmentServiceImplTest {
                 .studentId(1L)
                 .courseId(1L)
                 .enrollmentDate(LocalDate.of(2026, 9, 23))
-                .status(EnrollmentStatus.ACTIVE)
                 .build();
     }
 
@@ -101,8 +104,9 @@ class EnrollmentServiceImplTest {
                 1L
         )).thenReturn(false);
 
-        when(enrollmentRepository.save(any(Enrollment.class)))
-                .thenReturn(enrollment);
+        when(enrollmentRepository.saveAndFlush(
+                any(Enrollment.class)
+        )).thenReturn(enrollment);
 
         EnrollmentResponse response =
                 enrollmentService.enrollStudent(enrollmentRequest);
@@ -111,6 +115,7 @@ class EnrollmentServiceImplTest {
         assertEquals(1L, response.getId());
         assertEquals(1L, response.getStudentId());
         assertEquals(1L, response.getCourseId());
+
         assertEquals(
                 EnrollmentStatus.ACTIVE,
                 response.getStatus()
@@ -126,7 +131,54 @@ class EnrollmentServiceImplTest {
                 .existsByStudentIdAndCourseId(1L, 1L);
 
         verify(enrollmentRepository)
-                .save(any(Enrollment.class));
+                .saveAndFlush(any(Enrollment.class));
+    }
+
+    // =========================================================
+    // CREATE ENROLLMENT - DEFAULT STATUS
+    // =========================================================
+
+    @Test
+    void enrollStudent_shouldSetActiveStatusOnCreate() {
+
+        when(studentRepository.findById(1L))
+                .thenReturn(Optional.of(student));
+
+        when(courseRepository.findById(1L))
+                .thenReturn(Optional.of(course));
+
+        when(enrollmentRepository.existsByStudentIdAndCourseId(
+                1L,
+                1L
+        )).thenReturn(false);
+
+        when(enrollmentRepository.saveAndFlush(
+                any(Enrollment.class)
+        )).thenAnswer(invocation -> {
+
+            Enrollment saved =
+                    invocation.getArgument(0);
+
+            assertEquals(
+                    EnrollmentStatus.ACTIVE,
+                    saved.getStatus()
+            );
+
+            return saved;
+        });
+
+        EnrollmentResponse response =
+                enrollmentService.enrollStudent(enrollmentRequest);
+
+        assertNotNull(response);
+
+        assertEquals(
+                EnrollmentStatus.ACTIVE,
+                response.getStatus()
+        );
+
+        verify(enrollmentRepository)
+                .saveAndFlush(any(Enrollment.class));
     }
 
     // =========================================================
@@ -157,7 +209,7 @@ class EnrollmentServiceImplTest {
                 .findById(anyLong());
 
         verify(enrollmentRepository, never())
-                .save(any(Enrollment.class));
+                .saveAndFlush(any(Enrollment.class));
     }
 
     // =========================================================
@@ -191,7 +243,7 @@ class EnrollmentServiceImplTest {
                 .findById(999L);
 
         verify(enrollmentRepository, never())
-                .save(any(Enrollment.class));
+                .saveAndFlush(any(Enrollment.class));
     }
 
     // =========================================================
@@ -221,7 +273,7 @@ class EnrollmentServiceImplTest {
                 .existsByStudentIdAndCourseId(1L, 1L);
 
         verify(enrollmentRepository, never())
-                .save(any(Enrollment.class));
+                .saveAndFlush(any(Enrollment.class));
     }
 
     // =========================================================
@@ -241,6 +293,7 @@ class EnrollmentServiceImplTest {
         assertEquals(1L, response.getId());
         assertEquals(1L, response.getStudentId());
         assertEquals(1L, response.getCourseId());
+
         assertEquals(
                 EnrollmentStatus.ACTIVE,
                 response.getStatus()
@@ -290,16 +343,21 @@ class EnrollmentServiceImplTest {
 
         assertNotNull(response);
 
+        assertEquals(
+                EnrollmentStatus.COMPLETED,
+                enrollment.getStatus()
+        );
+
+        assertEquals(
+                EnrollmentStatus.COMPLETED,
+                response.getStatus()
+        );
+
         verify(enrollmentRepository)
                 .findById(1L);
 
         verify(enrollmentRepository)
                 .save(any(Enrollment.class));
-
-        assertEquals(
-                EnrollmentStatus.COMPLETED,
-                enrollment.getStatus()
-        );
     }
 
     // =========================================================
@@ -320,4 +378,6 @@ class EnrollmentServiceImplTest {
         verify(enrollmentRepository)
                 .delete(enrollment);
     }
+    
+    
 }
