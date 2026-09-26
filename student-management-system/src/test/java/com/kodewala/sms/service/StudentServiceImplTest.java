@@ -1,12 +1,16 @@
 package com.kodewala.sms.service;
 
-import com.kodewala.sms.dto.StudentRequest;
-import com.kodewala.sms.dto.StudentResponse;
-import com.kodewala.sms.entity.Student;
-import com.kodewala.sms.exception.DuplicateEmailException;
-import com.kodewala.sms.exception.StudentNotFoundException;
-import com.kodewala.sms.repository.StudentRepository;
-import com.kodewala.sms.service.impl.StudentServiceImpl;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,12 +18,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.kodewala.sms.dto.StudentRequest;
+import com.kodewala.sms.dto.StudentResponse;
+import com.kodewala.sms.entity.Student;
+import com.kodewala.sms.exception.DuplicateEmailException;
+import com.kodewala.sms.exception.ResourceConflictException;
+import com.kodewala.sms.exception.StudentNotFoundException;
+import com.kodewala.sms.repository.EnrollmentRepository;
+import com.kodewala.sms.repository.StudentRepository;
+import com.kodewala.sms.service.impl.StudentServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class StudentServiceImplTest {
@@ -32,6 +39,9 @@ class StudentServiceImplTest {
 
     private Student student;
     private StudentRequest studentRequest;
+    
+    @Mock
+    private EnrollmentRepository enrollmentRepository;
 
     @BeforeEach
     void setUp() {
@@ -253,5 +263,50 @@ class StudentServiceImplTest {
 
         verify(studentRepository, never())
                 .delete(any(Student.class));
+    }
+    
+    @Test
+    void deleteStudent_shouldRejectWhenEnrollmentsExist() {
+
+        Student student = new Student();
+        student.setId(1L);
+
+        when(studentRepository.findById(1L))
+                .thenReturn(Optional.of(student));
+
+        when(enrollmentRepository.existsByStudentId(1L))
+                .thenReturn(true);
+
+        ResourceConflictException exception =
+                assertThrows(
+                        ResourceConflictException.class,
+                        () -> studentService.deleteStudent(1L)
+                );
+
+        assertEquals(
+                "Student cannot be deleted because enrollments exist",
+                exception.getMessage()
+        );
+
+        verify(studentRepository, never())
+                .delete(any(Student.class));
+    }
+    
+    @Test
+    void deleteStudent_shouldDeleteWhenNoEnrollmentsExist() {
+
+        Student student = new Student();
+        student.setId(1L);
+
+        when(studentRepository.findById(1L))
+                .thenReturn(Optional.of(student));
+
+        when(enrollmentRepository.existsByStudentId(1L))
+                .thenReturn(false);
+
+        studentService.deleteStudent(1L);
+
+        verify(studentRepository)
+                .delete(student);
     }
 }

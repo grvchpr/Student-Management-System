@@ -274,7 +274,6 @@ const Enrollments = () => {
           courseId: Number(form.courseId),
           enrollmentDate:
             form.enrollmentDate,
-          status: form.status,
         });
 
         setSuccess(

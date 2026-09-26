@@ -1,6 +1,5 @@
 package com.kodewala.sms.service.impl;
 
-import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -23,26 +22,38 @@ import com.kodewala.sms.util.PageRequestUtil;
 @Service
 public class CourseServiceImpl implements CourseService {
 
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of(
+                    "id",
+                    "courseName",
+                    "courseCode",
+                    "duration",
+                    "fees",
+                    "createdAt"
+            );
+
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
 
-    public CourseServiceImpl(CourseRepository courseRepository, EnrollmentRepository enrollmentRepository) {
+    public CourseServiceImpl(
+            CourseRepository courseRepository,
+            EnrollmentRepository enrollmentRepository) {
+
         this.courseRepository = courseRepository;
-		this.enrollmentRepository = enrollmentRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
     public CourseResponse createCourse(CourseRequest request) {
-    	String courseCode = request.getCourseCode()
-    	        .trim()
-    	        .toUpperCase(Locale.ROOT);
 
-        if (courseRepository.existsByCourseCode(
-        		courseCode)) {
+        String courseCode =
+                normalizeCourseCode(request.getCourseCode());
+
+        if (courseRepository.existsByCourseCode(courseCode)) {
 
             throw new DuplicateCourseCodeException(
                     "Course already exists with code: "
-                            + request.getCourseCode()
+                            + courseCode
             );
         }
 
@@ -78,21 +89,12 @@ public class CourseServiceImpl implements CourseService {
             String sortBy,
             String direction) {
 
-        Set<String> allowedSortFields = Set.of(
-                "id",
-                "courseName",
-                "courseCode",
-                "duration",
-                "fees",
-                "createdAt"
-        );
-
         Pageable pageable = PageRequestUtil.create(
                 page,
                 size,
                 sortBy,
                 direction,
-                allowedSortFields
+                ALLOWED_SORT_FIELDS
         );
 
         return courseRepository.findAll(pageable)
@@ -130,18 +132,21 @@ public class CourseServiceImpl implements CourseService {
                                 "Course not found with id: " + id
                         ));
 
+        String courseCode =
+                normalizeCourseCode(request.getCourseCode());
+
         if (courseRepository.existsByCourseCodeAndIdNot(
-                request.getCourseCode(),
+                courseCode,
                 id)) {
 
             throw new DuplicateCourseCodeException(
                     "Another course already exists with code: "
-                            + request.getCourseCode()
+                            + courseCode
             );
         }
 
         course.setCourseName(request.getCourseName());
-        course.setCourseCode(request.getCourseCode());
+        course.setCourseCode(courseCode);
         course.setDuration(request.getDuration());
         course.setFees(request.getFees());
         course.setDescription(request.getDescription());
@@ -163,10 +168,10 @@ public class CourseServiceImpl implements CourseService {
 
         if (enrollmentRepository.existsByCourseId(id)) {
             throw new ResourceConflictException(
-                    "Cannot delete course because enrollments exist"
+                    "Course cannot be deleted because enrollments exist"
             );
         }
-        
+
         courseRepository.delete(course);
     }
 
@@ -182,5 +187,12 @@ public class CourseServiceImpl implements CourseService {
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();
+    }
+
+    private String normalizeCourseCode(String courseCode) {
+
+        return courseCode
+                .trim()
+                .toUpperCase();
     }
 }

@@ -30,6 +30,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kodewala.sms.dto.StudentRequest;
 import com.kodewala.sms.dto.StudentResponse;
+import com.kodewala.sms.security.CustomUserDetailsService;
+import com.kodewala.sms.security.JwtService;
 import com.kodewala.sms.service.StudentService;
 
 @WebMvcTest(StudentController.class)
@@ -44,6 +46,12 @@ class StudentControllerTest {
 
     @MockitoBean
     private StudentService studentService;
+    
+    @MockitoBean
+    private JwtService jwtService;
+    
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     // =========================================================
     // CREATE STUDENT

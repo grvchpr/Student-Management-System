@@ -1,27 +1,32 @@
 package com.kodewala.sms.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.kodewala.sms.dto.CourseRequest;
 import com.kodewala.sms.dto.CourseResponse;
 import com.kodewala.sms.entity.Course;
 import com.kodewala.sms.exception.CourseNotFoundException;
 import com.kodewala.sms.exception.DuplicateCourseCodeException;
+import com.kodewala.sms.exception.ResourceConflictException;
 import com.kodewala.sms.repository.CourseRepository;
+import com.kodewala.sms.repository.EnrollmentRepository;
 import com.kodewala.sms.service.impl.CourseServiceImpl;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CourseServiceImplTest {
@@ -34,6 +39,9 @@ class CourseServiceImplTest {
 
     private Course course;
     private CourseRequest courseRequest;
+    
+    @Mock
+    private EnrollmentRepository enrollmentRepository;
 
     @BeforeEach
     void setUp() {
@@ -257,5 +265,50 @@ class CourseServiceImplTest {
 
         verify(courseRepository, never())
                 .delete(any(Course.class));
+    }
+    
+    @Test
+    void deleteCourse_shouldRejectWhenEnrollmentsExist() {
+
+        Course course = new Course();
+        course.setId(1L);
+
+        when(courseRepository.findById(1L))
+                .thenReturn(Optional.of(course));
+
+        when(enrollmentRepository.existsByCourseId(1L))
+                .thenReturn(true);
+
+        ResourceConflictException exception =
+                assertThrows(
+                        ResourceConflictException.class,
+                        () -> courseService.deleteCourse(1L)
+                );
+
+        assertEquals(
+                "Course cannot be deleted because enrollments exist",
+                exception.getMessage()
+        );
+
+        verify(courseRepository, never())
+                .delete(any(Course.class));
+    }
+    
+    @Test
+    void deleteCourse_shouldDeleteWhenNoEnrollmentsExist() {
+
+        Course course = new Course();
+        course.setId(1L);
+
+        when(courseRepository.findById(1L))
+                .thenReturn(Optional.of(course));
+
+        when(enrollmentRepository.existsByCourseId(1L))
+                .thenReturn(false);
+
+        courseService.deleteCourse(1L);
+
+        verify(courseRepository)
+                .delete(course);
     }
 }
